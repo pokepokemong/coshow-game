@@ -146,14 +146,18 @@ function tryImg(src) {
 }
 
 export async function loadAssets() {
-  const [koaiImg, koaiImg2, koaiHitImg, koaiHappyImg, bananaImg, obstacleImg] = await Promise.all([
+  // 컨소시엄 심볼 13종 — 먹는 아이템
+  const symbolPaths = Array.from({ length: 13 }, (_, i) => `assets/symbols/sym${String(i + 1).padStart(2, '0')}.png`);
+  const [koaiImg, koaiImg2, koaiHitImg, koaiHappyImg, bananaImg, obstacleImg, ...symbolImgs] = await Promise.all([
     tryImg('assets/koai.png'),
     tryImg('assets/koai2.png'), // 있으면 달리기 2번째 프레임으로 사용
     tryImg('assets/koai_hit.png'), // 충돌 시 표정
     tryImg('assets/koai_happy.png'), // 결과 카드 표정
     tryImg('assets/banana.png'),
     tryImg('assets/obstacle.png'),
+    ...symbolPaths.map(tryImg),
   ]);
+  const symbols = symbolImgs.filter(Boolean);
 
   const koaiFrames = koaiImg
     ? [koaiImg, koaiImg2 || koaiImg]
@@ -164,8 +168,9 @@ export async function loadAssets() {
     koaiCustom: !!koaiImg, // 커스텀 이미지면 바운스 애니메이션으로 대체
     koaiHit: koaiHitImg || koaiFrames[0],
     koaiHappy: koaiHappyImg || koaiFrames[0],
-    banana: bananaImg || makeSprite(BANANA),
-    bananaCustom: !!bananaImg,
+    // 아이템: 심볼 13종이 있으면 그걸 쓰고, 없으면 banana.png → 픽셀 바나나 순서로 대체
+    items: symbols.length ? symbols : [bananaImg || makeSprite(BANANA)],
+    itemsCustom: symbols.length > 0 || !!bananaImg,
     crate: obstacleImg || makeSprite(CRATE),
     crateCustom: !!obstacleImg,
     rock: makeSprite(ROCK),

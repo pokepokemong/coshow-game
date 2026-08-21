@@ -1,7 +1,7 @@
 // game.js — 코아이 러너 메인 (게임 루프 + 화면 전환)
-import { loadAssets } from './assets.js';
-import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js';
-import { renderCard, saveCard } from './result.js';
+import { loadAssets } from './assets.js?v=4';
+import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=4';
+import { renderCard, saveCard } from './result.js?v=4';
 
 // ───────── 내부 해상도 (픽셀아트 기준) ─────────
 const W = 400, H = 240;
@@ -159,10 +159,16 @@ function spawnItems() {
   const air = Math.random() < 0.45;
   const baseY = air ? GROUND_Y - rand(58, 78) : GROUND_Y - 30;
   for (let i = 0; i < count; i++) {
-    const bx = W + 20 + i * 18;
+    const bx = W + 20 + i * 20;
     // 장애물과 겹치면 공중으로 올린다
     const clash = S.obstacles.some((o) => Math.abs(o.x - bx) < 30);
-    S.items.push({ x: bx, y: clash ? GROUND_Y - 70 : baseY, w: 14, h: 14 });
+    S.items.push({
+      x: bx,
+      y: clash ? GROUND_Y - 70 : baseY,
+      w: 16,
+      h: 16,
+      spr: Math.floor(Math.random() * A.items.length), // 컨소시엄 심볼 랜덤
+    });
   }
   S.nextItem = rand(200, 420);
 }
@@ -296,7 +302,7 @@ function draw() {
   // 아이템 (둥실 애니메이션)
   S.items.forEach((it) => {
     const bob = Math.sin((S.frame + it.x) * 0.1) * 2;
-    drawSprite(A.banana, A.bananaCustom, Math.round(it.x), Math.round(it.y + bob), it.w, it.h);
+    drawSprite(A.items[it.spr || 0], A.itemsCustom, Math.round(it.x), Math.round(it.y + bob), it.w, it.h);
   });
 
   // 장애물
@@ -336,7 +342,8 @@ function draw() {
   ctx.textAlign = 'right';
   ctx.fillText(`SCORE ${String(score()).padStart(5, '0')}`, W - 8, 18);
   ctx.textAlign = 'left';
-  drawSprite(A.banana, A.bananaCustom, 8, 7, 13, 13);
+  // HUD 아이콘: 심볼 13종이 천천히 돌아가며 표시
+  drawSprite(A.items[Math.floor(S.frame / 45) % A.items.length], A.itemsCustom, 8, 6, 13, 13);
   ctx.fillText(`x ${S.bananas}`, 25, 18);
 
   if (S.state === 'ready') {
@@ -397,7 +404,7 @@ async function showOver() {
     bananas: S.bananas,
     best,
     koaiSprite: A.koaiHappy,
-    bananaSprite: A.banana,
+    bananaSprite: A.items[0],
   });
   overScreen.classList.remove('hidden');
   fetchLeaderboard().then(showLeaderboard).catch(() => {});
