@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CO-SHOW 코아이 러너</title>
+  <meta name="description" content="CO-SHOW 미니게임 — 코아이와 함께 달리며 바나나를 모아보세요!">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="wrap">
+    <h1 class="title">CO-SHOW 코아이 러너 <button id="muteBtn" class="pixel-btn small" style="float:right">🔊</button></h1>
+
+    <div id="gameBox">
+      <canvas id="game"></canvas>
+
+      <!-- 시작 화면 -->
+      <div id="startScreen" class="overlay">
+        <div class="pixel-panel">
+          <canvas id="preview" style="image-rendering:pixelated"></canvas>
+          <p class="big">코아이 러너</p>
+          <p class="hint">탭/스페이스로 점프!<br>장애물을 피하고 바나나를 모으세요<br>(더블점프 가능)</p>
+          <p style="margin:10px 0 6px">
+            <input id="nickname" type="text" maxlength="8" placeholder="닉네임 (8자 이내)" autocomplete="off">
+          </p>
+          <button id="startBtn" class="pixel-btn">게임 시작!</button>
+          <p class="hint" id="netState" style="margin-top:8px">연결 확인 중...</p>
+        </div>
+      </div>
+
+      <!-- 게임오버 화면 -->
+      <div id="overScreen" class="overlay hidden">
+        <canvas id="cardCanvas"></canvas>
+        <div class="btn-row">
+          <button id="saveBtn" class="pixel-btn alt small">📸 이미지 저장</button>
+          <button id="retryBtn" class="pixel-btn small">다시하기</button>
+        </div>
+        <div id="leaderboard" class="pixel-panel">
+          <h3>🏆 TOP 10 <span id="lbMode" class="hint"></span></h3>
+          <ol id="lbList"></ol>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      CO-SHOW 체험존 미니게임 · 코아이와 함께 달려요!
+    </footer>
+  </div>
+
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>

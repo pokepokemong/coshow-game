@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CO-SHOW 관리자 대시보드</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin">
+  <div id="wrap">
+    <h1 class="title">CO-SHOW 관리자 대시보드</h1>
+    <div id="content">
+      <p class="hint" style="text-align:center">불러오는 중...</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { firebaseConfig, ADMIN_KEY, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js';
+
+    const content = document.getElementById('content');
+
+    function fmtTime(ts) {
+      if (!ts || !ts.toDate) return '-';
+      const d = ts.toDate();
+      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function render() {
+      const key = new URLSearchParams(location.search).get('key');
+      if (key !== ADMIN_KEY) {
+        content.innerHTML = '<div class="notice">접근 키가 필요합니다.<br>admin.html?key=관리자키 형식으로 접속하세요.</div>';
+        return;
+      }
+      if (!isConfigured()) {
+        content.innerHTML = '<div class="notice">Firebase가 아직 설정되지 않았습니다.<br>js/firebase.js 상단의 firebaseConfig에 프로젝트 키를 입력하세요.<br>(절차는 README.md 참고)</div>';
+        return;
+      }
+      const ok = await initFirebase();
+      if (!ok) {
+        content.innerHTML = '<div class="notice">Firebase 연결에 실패했습니다. 콘솔 로그를 확인하세요.</div>';
+        return;
+      }
+      const data = await fetchAdminData();
+      const { users, scores, totalPlays, todayScores } = data;
+
+      const todayUids = new Set(todayScores.map((s) => s.uid));
+      const bestScore = users.reduce((m, u) => Math.max(m, u.bestScore || 0), 0);
+
+      const userRows = users
+        .slice()
+        .sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0))
+        .map((u, i) => `<tr>
+          <td>${i + 1}</td>
+          <td>${esc(u.nickname)}</td>
+          <td>${u.playCount || 0}</td>
+          <td>${u.bestScore || 0}</td>
+          <td>${fmtTime(u.lastVisitAt)}</td>
+        </tr>`).join('');
+
+      const scoreRows = scores.slice(0, 100).map((s) => `<tr>
+        <td>${fmtTime(s.createdAt)}</td>
+        <td>${esc(s.nickname)}</td>
+        <td>${s.score}</td>
+        <td>${s.bananas ?? '-'}</td>
+      </tr>`).join('');
+
+      content.innerHTML = `
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="label">총 이용자 수</div><div class="value">${users.length}</div></div>
+          <div class="kpi-card"><div class="label">총 플레이 수</div><div class="value">${totalPlays}</div></div>
+          <div class="kpi-card"><div class="label">오늘 이용자</div><div class="value">${todayUids.size}</div></div>
+          <div class="kpi-card"><div class="label">오늘 플레이</div><div class="value">${todayScores.length}</div></div>
+          <div class="kpi-card"><div class="label">최고 점수</div><div class="value">${bestScore}</div></div>
+        </div>
+        <div style="text-align:center"><button id="refreshBtn" class="pixel-btn small alt">🔄 새로고침</button>
+          <span class="hint" id="lastUpdate"></span></div>
+
+        <h2 class="section-title">사용자별 기록</h2>
+        <div class="table-wrap">
+          <table class="pixel-table">
+            <thead><tr><th>#</th><th>닉네임</th><th>플레이</th><th>최고점수</th><th>최근 접속</th></tr></thead>
+            <tbody>${userRows || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody>
+          </table>
+        </div>
+
+        <h2 class="section-title">최근 플레이 로그 (최신 100건)</h2>
+        <div class="table-wrap">
+          <table class="pixel-table">
+            <thead><tr><th>시각</th><th>닉네임</th><th>점수</th><th>바나나</th></tr></thead>
+            <tbody>${scoreRows || '<tr><td colspan="4">기록 없음</td></tr>'}</tbody>
+          </table>
+        </div>`;
+
+      document.getElementById('lastUpdate').textContent =
+        ` 업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+      document.getElementById('refreshBtn').addEventListener('click', render);
+    }
+
+    render();
+    setInterval(render, 60000); // 1분마다 자동 갱신
+  </script>
+</body>
+</html>
