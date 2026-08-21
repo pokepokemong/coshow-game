@@ -9,9 +9,18 @@ const GROUND_Y = 200;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-canvas.width = W;
-canvas.height = H;
+const SCALE = 2; // 내부 렌더 배율 — 커스텀 이미지가 깨져 보이지 않도록 2배 해상도로 그린다
+canvas.width = W * SCALE;
+canvas.height = H * SCALE;
+ctx.scale(SCALE, SCALE);
 ctx.imageSmoothingEnabled = false;
+
+// 벡터풍 커스텀 이미지는 스무딩을 켜고, 코드로 그린 픽셀 스프라이트는 끈 채로 그린다
+function drawSprite(img, smooth, x, y, w, h) {
+  ctx.imageSmoothingEnabled = smooth;
+  ctx.drawImage(img, x, y, w, h);
+  ctx.imageSmoothingEnabled = false;
+}
 
 let A = null; // assets
 
@@ -275,12 +284,12 @@ function draw() {
   // 아이템 (둥실 애니메이션)
   S.items.forEach((it) => {
     const bob = Math.sin((S.frame + it.x) * 0.1) * 2;
-    ctx.drawImage(A.banana, Math.round(it.x), Math.round(it.y + bob), it.w, it.h);
+    drawSprite(A.banana, A.bananaCustom, Math.round(it.x), Math.round(it.y + bob), it.w, it.h);
   });
 
   // 장애물
   S.obstacles.forEach((o) => {
-    ctx.drawImage(o.spr === 'rock' ? A.rock : A.crate, Math.round(o.x), Math.round(o.y), o.w, o.h);
+    drawSprite(o.spr === 'rock' ? A.rock : A.crate, o.spr === 'rock' ? false : A.crateCustom, Math.round(o.x), Math.round(o.y), o.w, o.h);
   });
 
   // 코아이
@@ -301,7 +310,7 @@ function draw() {
     ctx.translate(-(p.x + p.w / 2), -(p.y + p.h / 2));
   }
   const bounce = A.koaiCustom && onGround && S.state === 'play' ? Math.abs(Math.sin(S.frame * 0.2)) * -2 : 0;
-  ctx.drawImage(frame, Math.round(p.x), Math.round(p.y + bounce), p.w, p.h);
+  drawSprite(frame, A.koaiCustom, Math.round(p.x), Math.round(p.y + bounce), p.w, p.h);
   ctx.restore();
 
   // 파티클 (+10)
@@ -315,7 +324,7 @@ function draw() {
   ctx.textAlign = 'right';
   ctx.fillText(`SCORE ${String(score()).padStart(5, '0')}`, W - 8, 18);
   ctx.textAlign = 'left';
-  ctx.drawImage(A.banana, 8, 7, 13, 13);
+  drawSprite(A.banana, A.bananaCustom, 8, 7, 13, 13);
   ctx.fillText(`x ${S.bananas}`, 25, 18);
 
   if (S.state === 'ready') {
@@ -421,10 +430,12 @@ $('muteBtn').addEventListener('click', () => {
   A = await loadAssets();
   // 시작화면 미리보기 스프라이트
   const pv = $('preview');
-  pv.width = 64; pv.height = 64;
+  pv.width = 128; pv.height = 128;
+  pv.style.width = '64px';
+  pv.style.height = '64px';
   const pg = pv.getContext('2d');
-  pg.imageSmoothingEnabled = false;
-  pg.drawImage(A.koai[0], 0, 0, 64, 64);
+  pg.imageSmoothingEnabled = A.koaiCustom;
+  pg.drawImage(A.koai[0], 0, 0, 128, 128);
 
   const savedNick = localStorage.getItem('coshow_nick');
   if (savedNick) $('nickname').value = savedNick;

@@ -10,10 +10,12 @@ function px(g, x, y, w, h, color) {
 
 // 결과 카드를 캔버스에 그린다
 export function renderCard(canvas, { nickname, score, bananas, best, koaiSprite, bananaSprite }) {
-  canvas.width = CW;
-  canvas.height = CH;
+  const SCALE = 3; // 저장용 PNG 선명도를 위해 3배 해상도로 렌더
+  canvas.width = CW * SCALE;
+  canvas.height = CH * SCALE;
   const g = canvas.getContext('2d');
-  g.imageSmoothingEnabled = false;
+  g.scale(SCALE, SCALE);
+  g.imageSmoothingEnabled = true;
 
   // 배경 + 테두리
   px(g, 0, 0, CW, CH, '#29366f');

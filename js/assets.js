@@ -165,7 +165,9 @@ export async function loadAssets() {
     koaiHit: koaiHitImg || koaiFrames[0],
     koaiHappy: koaiHappyImg || koaiFrames[0],
     banana: bananaImg || makeSprite(BANANA),
+    bananaCustom: !!bananaImg,
     crate: obstacleImg || makeSprite(CRATE),
+    crateCustom: !!obstacleImg,
     rock: makeSprite(ROCK),
     cloud: makeSprite(CLOUD),
   };
