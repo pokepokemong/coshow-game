@@ -40,14 +40,12 @@ h1.title {
   border: 4px solid #41a6f6;
   box-shadow: 0 0 0 4px #1a1c2c, 0 0 0 8px #29366f;
   background: #a2dcff;
-  image-rendering: pixelated;
 }
 
 canvas#game {
   display: block;
   width: 100%;
   height: auto;
-  image-rendering: pixelated;
   touch-action: none;
 }
 
@@ -111,7 +109,6 @@ input#nickname {
 canvas#cardCanvas {
   width: 216px;
   height: auto;
-  image-rendering: pixelated;
   border: 3px solid #10121f;
   box-shadow: 4px 4px 0 #10121f;
 }

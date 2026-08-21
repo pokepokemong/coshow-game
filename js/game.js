@@ -9,11 +9,23 @@ const GROUND_Y = 200;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const SCALE = 2; // 내부 렌더 배율 — 커스텀 이미지가 깨져 보이지 않도록 2배 해상도로 그린다
-canvas.width = W * SCALE;
-canvas.height = H * SCALE;
-ctx.scale(SCALE, SCALE);
-ctx.imageSmoothingEnabled = false;
+
+// 표시 크기 × 기기 픽셀 비율에 맞춰 내부 해상도를 잡아 어떤 화면에서도 1:1로 선명하게 렌더
+let fittedKey = '';
+function fitCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cssW = canvas.clientWidth || canvas.parentElement.clientWidth || W;
+  const key = `${cssW}x${dpr}`;
+  if (key === fittedKey) return;
+  fittedKey = key;
+  const scale = Math.max(1, Math.min(4, (cssW * dpr) / W));
+  canvas.width = Math.round(W * scale);
+  canvas.height = Math.round(H * scale);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
 
 // 벡터풍 커스텀 이미지는 스무딩을 켜고, 코드로 그린 픽셀 스프라이트는 끈 채로 그린다
 function drawSprite(img, smooth, x, y, w, h) {
@@ -341,6 +353,7 @@ function loop(t) {
   const dt = lastT ? t - lastT : 16.7;
   lastT = t;
   const f = Math.min(dt / 16.7, 2.5); // 60fps 기준 배속 팩터
+  fitCanvas(); // 레이아웃/배율 변경 감지 (같으면 즉시 반환)
   update(f);
   draw();
   requestAnimationFrame(loop);
