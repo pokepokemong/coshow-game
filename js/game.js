@@ -133,6 +133,11 @@ window.addEventListener('keyup', (e) => {
 
 // ───────── 스폰 ─────────
 function spawnObstacle() {
+  // 스폰 지점 근처에 심볼 아이템이 있으면 겹치지 않게 잠시 미룬다
+  if (S.items.some((it) => it.x > W - 40 && it.x < W + 110)) {
+    S.nextObstacle = 60;
+    return;
+  }
   const roll = Math.random();
   if (roll < 0.45) {
     S.obstacles.push({ x: W + 20, y: GROUND_Y - 16, w: 16, h: 16, spr: 'crate' }); // 상자 1개
@@ -155,18 +160,23 @@ function spawnObstacle() {
 }
 
 function spawnItems() {
+  // 스폰 지점 근처에 장애물이 있으면 겹치지 않게 잠시 미룬다
+  if (S.obstacles.some((o) => o.x > W - 40 && o.x < W + 110)) {
+    S.nextItem = 60;
+    return;
+  }
   const count = 1 + Math.floor(Math.random() * 3); // 1~3개 묶음
   const air = Math.random() < 0.45;
-  const baseY = air ? GROUND_Y - rand(58, 78) : GROUND_Y - 30;
+  const baseY = air ? GROUND_Y - rand(62, 82) : GROUND_Y - 34;
   for (let i = 0; i < count; i++) {
-    const bx = W + 20 + i * 20;
-    // 장애물과 겹치면 공중으로 올린다
-    const clash = S.obstacles.some((o) => Math.abs(o.x - bx) < 30);
+    const bx = W + 20 + i * 26;
+    // 혹시라도 장애물과 가까우면 2단 상자보다 높은 공중으로 올린다
+    const clash = S.obstacles.some((o) => Math.abs(o.x - bx) < 55);
     S.items.push({
       x: bx,
-      y: clash ? GROUND_Y - 70 : baseY,
-      w: 16,
-      h: 16,
+      y: clash ? GROUND_Y - 88 : baseY,
+      w: 20,
+      h: 20,
       spr: Math.floor(Math.random() * A.items.length), // 컨소시엄 심볼 랜덤
     });
   }
@@ -343,8 +353,8 @@ function draw() {
   ctx.fillText(`SCORE ${String(score()).padStart(5, '0')}`, W - 8, 18);
   ctx.textAlign = 'left';
   // HUD 아이콘: 심볼 13종이 천천히 돌아가며 표시
-  drawSprite(A.items[Math.floor(S.frame / 45) % A.items.length], A.itemsCustom, 8, 6, 13, 13);
-  ctx.fillText(`x ${S.bananas}`, 25, 18);
+  drawSprite(A.items[Math.floor(S.frame / 45) % A.items.length], A.itemsCustom, 8, 5, 15, 15);
+  ctx.fillText(`x ${S.bananas}`, 27, 18);
 
   if (S.state === 'ready') {
     ctx.textAlign = 'center';

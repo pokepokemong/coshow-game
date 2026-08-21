@@ -20,7 +20,7 @@ html, body {
 
 #wrap {
   position: relative;
-  max-width: 820px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 12px 8px 24px;
 }
