@@ -69,18 +69,18 @@ export async function registerUser(nickname) {
 }
 
 // 게임 종료 시 점수 저장 (scores 로그 + users 집계)
-export async function submitScore(nickname, score, bananas) {
+export async function submitScore(nickname, score, bananas, kinds = 0) {
   // 로컬 기록은 항상 유지 (오프라인 리더보드 겸 개인 최고점)
   const best = Math.max(score, Number(localStorage.getItem('coshow_best') || 0));
   localStorage.setItem('coshow_best', String(best));
   const local = JSON.parse(localStorage.getItem('coshow_scores') || '[]');
-  local.push({ nickname, score, bananas, at: Date.now() });
+  local.push({ nickname, score, bananas, kinds, at: Date.now() });
   localStorage.setItem('coshow_scores', JSON.stringify(local.slice(-200)));
 
   if (!db) return { online: false, best };
   try {
     await fs.addDoc(fs.collection(db, 'scores'), {
-      uid, nickname, score, bananas, createdAt: fs.serverTimestamp(),
+      uid, nickname, score, bananas, kinds, createdAt: fs.serverTimestamp(),
     });
     const ref = fs.doc(db, 'users', uid);
     const snap = await fs.getDoc(ref);

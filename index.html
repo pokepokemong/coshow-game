@@ -6,7 +6,7 @@
   <title>CO-SHOW 코아이 러너</title>
   <meta name="description" content="CO-SHOW 미니게임 — 코아이와 함께 달리며 바나나를 모아보세요!">
   <link rel="icon" type="image/png" href="assets/koai.png">
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
   <div id="wrap">
@@ -29,16 +29,22 @@
         </div>
       </div>
 
-      <!-- 게임오버 화면 -->
+      <!-- 게임오버 화면: 좌(카드+버튼) / 우(랭킹) -->
       <div id="overScreen" class="overlay hidden">
-        <canvas id="cardCanvas"></canvas>
-        <div class="btn-row">
-          <button id="saveBtn" class="pixel-btn alt small">📸 이미지 저장</button>
-          <button id="retryBtn" class="pixel-btn small">다시하기</button>
-        </div>
-        <div id="leaderboard" class="pixel-panel">
-          <h3>🏆 TOP 10 <span id="lbMode" class="hint"></span></h3>
-          <ol id="lbList"></ol>
+        <div class="over-cols">
+          <div class="over-left">
+            <canvas id="cardCanvas"></canvas>
+            <div class="btn-row">
+              <button id="saveBtn" class="pixel-btn alt small">📸 이미지 저장</button>
+              <button id="retryBtn" class="pixel-btn small">다시하기</button>
+            </div>
+          </div>
+          <div class="over-right">
+            <div id="leaderboard" class="pixel-panel">
+              <h3>🏆 TOP 10 <span id="lbMode" class="hint"></span></h3>
+              <ol id="lbList"></ol>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -48,6 +54,6 @@
     </footer>
   </div>
 
-  <script type="module" src="js/game.js?v=6"></script>
+  <script type="module" src="js/game.js?v=7"></script>
 </body>
 </html>

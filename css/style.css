@@ -1,4 +1,6 @@
 /* CO-SHOW 코아이 러너 — 픽셀 레트로 스타일 */
+@import url('https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css'); /* 갈무리 픽셀 폰트 */
+
 @font-face {
   font-family: 'NeoDunggeunmo';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_neodgm@1.510/neodgm.woff') format('woff');
@@ -10,7 +12,7 @@
 html, body {
   height: 100%;
   background: #1a1c2c;
-  font-family: 'NeoDunggeunmo', 'Courier New', monospace;
+  font-family: 'Galmuri11', 'NeoDunggeunmo', 'Courier New', monospace;
   color: #f4f4f4;
   overscroll-behavior: none;
   touch-action: manipulation;
@@ -65,6 +67,14 @@ canvas#game {
 }
 .overlay.hidden { display: none; }
 
+/* 시작 화면: 키비주얼 배경 + 어두운 오버레이 */
+#startScreen {
+  background:
+    linear-gradient(rgba(16, 18, 31, 0.5), rgba(16, 18, 31, 0.72)),
+    url('../assets/bg/keyvisual.png') center / cover no-repeat,
+    #141a3a;
+}
+
 .pixel-panel {
   background: #29366f;
   border: 3px solid #41a6f6;
@@ -105,7 +115,23 @@ input#nickname {
 .hint { font-size: 12px; color: #94b0c2; line-height: 1.7; }
 .big { font-size: 18px; color: #ffd23f; }
 
-/* ---------- 결과 화면 ---------- */
+/* ---------- 결과 화면 (좌: 카드/점수, 우: 랭킹) ---------- */
+.over-cols {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.over-left, .over-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.over-right #leaderboard { max-width: 250px; min-width: 220px; }
+
 canvas#cardCanvas {
   width: 216px;
   height: auto;

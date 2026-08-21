@@ -1,7 +1,7 @@
 // game.js — 코아이 러너 메인 (게임 루프 + 화면 전환)
-import { loadAssets } from './assets.js?v=6';
-import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=6';
-import { renderCard, saveCard } from './result.js?v=6';
+import { loadAssets } from './assets.js?v=7';
+import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=7';
+import { renderCard, saveCard } from './result.js?v=7';
 
 // ───────── 내부 해상도 (픽셀아트 기준) ─────────
 const W = 400, H = 240;
@@ -62,12 +62,37 @@ const sfx = {
   level: () => { beep(660, 0.1, 'square', 0, 0.08); setTimeout(() => beep(880, 0.18, 'square', 220, 0.08), 100); },
 };
 
-// 레벨별 배경 팔레트: 낮 → 노을 → 밤 (레벨 4부터 다시 낮)
+// 키비주얼 네온 팔레트: 레벨마다 네온 색상 순환 (시안 → 마젠타 → 그린)
 const PALETTES = [
-  { sky: '#a2dcff', hill: '#8fd47a', grass: '#5cab48', dirt: '#7a4a1e', dirtDark: '#5c3714', hud: '#10121f', night: false },
-  { sky: '#ffc98a', hill: '#d4a05a', grass: '#8fae4a', dirt: '#6e3f18', dirtDark: '#502d0e', hud: '#57280a', night: false },
-  { sky: '#232a4d', hill: '#3c5a44', grass: '#2e6b3a', dirt: '#3d2712', dirtDark: '#2a1a0a', hud: '#f4f4f4', night: true },
+  { sky: '#141a3a', neon: '#57e6ff', mountainFar: '#1d2752', mountain: '#28336a', ground: '#1a2148', groundDark: '#242e63', hud: '#eaf6ff' },
+  { sky: '#1f1438', neon: '#ff5fd0', mountainFar: '#2c1d50', mountain: '#392765', ground: '#251a46', groundDark: '#31245c', hud: '#ffeaf9' },
+  { sky: '#0d1f33', neon: '#5fffa8', mountainFar: '#173049', mountain: '#20405c', ground: '#142c43', groundDark: '#1d3a57', hud: '#eafff3' },
 ];
+
+// 무등산 실루엣 (한 세그먼트 400px, 시작·끝 높이 0으로 이어짐)
+const MTN_FAR = [[0, 0], [55, -26], [130, -44], [200, -34], [265, -50], [330, -22], [400, 0]];
+const MTN_NEAR = [[0, 0], [50, -20], [110, -42], [150, -58], [250, -58], [300, -40], [350, -16], [400, 0]];
+const MTN_COLUMNS = [[155, 17], [173, 23], [191, 20], [209, 25], [227, 18], [245, 22]]; // 주상절리(서석대) 기둥 [x, 높이]
+
+function drawRidge(pts, shift, color, columns) {
+  const seg = 400;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(-seg, GROUND_Y);
+  for (let i = -1; i < 2; i++) {
+    const bx = i * seg - shift;
+    for (const [dx, dy] of pts) ctx.lineTo(bx + dx, GROUND_Y + dy);
+  }
+  ctx.lineTo(W + seg, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+  if (columns) {
+    for (let i = -1; i < 2; i++) {
+      const bx = i * seg - shift;
+      for (const [cx, h] of columns) ctx.fillRect(bx + cx, GROUND_Y - 58 - h, 13, h + 4);
+    }
+  }
+}
 
 // ───────── 게임 상태 ─────────
 const S = {
@@ -88,6 +113,7 @@ const S = {
   shake: 0,
   level: 1,
   levelBannerT: 0,
+  collected: [], // 심볼 인덱스별 획득 개수
 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -109,6 +135,7 @@ function resetGame() {
   S.shake = 0;
   S.level = 1;
   S.levelBannerT = 0;
+  S.collected = new Array(A ? A.items.length : 18).fill(0);
 }
 
 // ───────── 입력 ─────────
@@ -197,6 +224,7 @@ function spawnItems() {
       w: 20,
       h: 20,
       spr: Math.floor(Math.random() * A.items.length), // 컨소시엄 심볼 랜덤
+      phase: Math.random() * Math.PI * 2, // 둥실거림 고정 위상 (부드러운 움직임)
     });
   }
   S.nextItem = rand(200, 420);
@@ -288,6 +316,7 @@ function update(f) {
     if (hb.x < it.x + it.w && hb.x + hb.w > it.x && hb.y < it.y + it.h && hb.y + hb.h > it.y) {
       it.got = true;
       S.bananas++;
+      S.collected[it.spr] = (S.collected[it.spr] || 0) + 1;
       sfx.eat();
       S.particles.push({ x: it.x, y: it.y - 4, vx: 0.3, vy: -0.8, life: 30, text: '+10' });
     }
@@ -312,57 +341,67 @@ function draw() {
 
   const pal = PALETTES[(S.level - 1) % PALETTES.length];
 
-  // 하늘
+  // 하늘 (키비주얼 다크 네이비)
   ctx.fillStyle = pal.sky;
   ctx.fillRect(-8, -8, W + 16, H + 16);
 
-  // 밤에는 별
-  if (pal.night) {
-    ctx.fillStyle = '#e8e8d0';
-    for (let i = 0; i < 24; i++) {
-      let px = (i * 71 - Math.floor(S.dist * 0.04)) % (W + 20);
-      if (px < 0) px += W + 20;
-      ctx.fillRect(px, 8 + ((i * 37) % (GROUND_Y - 90)), 2, 2);
-    }
+  // 네온 입자(별) — 반짝임
+  for (let i = 0; i < 24; i++) {
+    let px = (i * 71 - Math.floor(S.dist * 0.04)) % (W + 20);
+    if (px < 0) px += W + 20;
+    ctx.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(S.frame * 0.04 + i * 1.7));
+    ctx.fillStyle = i % 3 === 0 ? pal.neon : '#cfe0ff';
+    ctx.fillRect(px, 8 + ((i * 37) % (GROUND_Y - 100)), 2, 2);
   }
+  ctx.globalAlpha = 1;
 
-  // 구름
-  S.clouds.forEach((c) => ctx.drawImage(A.cloud, Math.round(c.x), Math.round(c.y)));
-
-  // 원경 언덕
-  ctx.fillStyle = pal.hill;
-  const hillShift = Math.floor((S.dist * 0.25) % 160);
-  for (let i = -1; i < 4; i++) {
-    const bx = i * 160 - hillShift;
+  // 네온 웨이브 (키비주얼의 흐르는 라인)
+  ctx.strokeStyle = pal.neon;
+  ctx.lineWidth = 1;
+  for (let wv = 0; wv < 3; wv++) {
+    ctx.globalAlpha = 0.28 - wv * 0.08;
     ctx.beginPath();
-    ctx.moveTo(bx, GROUND_Y);
-    ctx.lineTo(bx + 80, GROUND_Y - 36);
-    ctx.lineTo(bx + 160, GROUND_Y);
-    ctx.fill();
+    for (let x = -8; x <= W + 8; x += 8) {
+      const y = 42 + wv * 30 + Math.sin((x + S.dist * (0.3 + wv * 0.12)) * 0.02 + wv * 2.1) * 14;
+      x === -8 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 
-  // 지면
-  ctx.fillStyle = pal.grass;
-  ctx.fillRect(-8, GROUND_Y, W + 16, 6);
-  ctx.fillStyle = pal.dirt;
-  ctx.fillRect(-8, GROUND_Y + 6, W + 16, H - GROUND_Y);
-  ctx.fillStyle = pal.dirtDark;
+  // 구름 (다크 톤에 맞게 희미하게)
+  ctx.globalAlpha = 0.18;
+  S.clouds.forEach((c) => ctx.drawImage(A.cloud, c.x, c.y));
+  ctx.globalAlpha = 1;
+
+  // 무등산 실루엣 2겹 (근경 정상엔 주상절리 기둥)
+  drawRidge(MTN_FAR, Math.floor((S.dist * 0.1) % 400), pal.mountainFar, null);
+  drawRidge(MTN_NEAR, Math.floor((S.dist * 0.22) % 400), pal.mountain, MTN_COLUMNS);
+
+  // 지면: 네온 그라운드 라인 + 다크 + 회로 점선
+  ctx.fillStyle = pal.neon;
+  ctx.globalAlpha = 0.85;
+  ctx.fillRect(-8, GROUND_Y, W + 16, 2);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = pal.ground;
+  ctx.fillRect(-8, GROUND_Y + 2, W + 16, H - GROUND_Y);
+  ctx.fillStyle = pal.groundDark;
   const gShift = Math.floor(S.dist % 24);
   for (let x = -gShift; x < W + 24; x += 24) {
     ctx.fillRect(x, GROUND_Y + 12, 10, 3);
     ctx.fillRect(x + 14, GROUND_Y + 24, 8, 3);
   }
 
-  // 아이템 (둥실 애니메이션)
+  // 아이템 (둥실 애니메이션 — 고정 위상 + 소수점 좌표로 부드럽게)
   S.items.forEach((it) => {
-    const bob = Math.sin((S.frame + it.x) * 0.1) * 2;
-    drawSprite(A.items[it.spr || 0], A.itemsCustom, Math.round(it.x), Math.round(it.y + bob), it.w, it.h);
+    const bob = Math.sin(S.frame * 0.06 + (it.phase || 0)) * 2.5;
+    drawSprite(A.items[it.spr || 0], A.itemsCustom, it.x, it.y + bob, it.w, it.h);
   });
 
   // 장애물
   S.obstacles.forEach((o) => {
     const spr = o.spr === 'rock' ? A.rock : o.spr === 'drone' ? A.drone : A.crate;
-    drawSprite(spr, o.spr === 'crate' ? A.crateCustom : false, Math.round(o.x), Math.round(o.y), o.w, o.h);
+    drawSprite(spr, o.spr === 'crate' ? A.crateCustom : false, o.x, o.y, o.w, o.h);
   });
 
   // 코아이
@@ -382,41 +421,41 @@ function draw() {
     ctx.rotate(-0.5);
     ctx.translate(-(p.x + p.w / 2), -(p.y + p.h / 2));
   }
-  const bounce = A.koaiCustom && onGround && S.state === 'play' ? Math.abs(Math.sin(S.frame * 0.2)) * -2 : 0;
-  drawSprite(frame, A.koaiCustom, Math.round(p.x), Math.round(p.y + bounce), p.w, p.h);
+  const bounce = A.koaiCustom && onGround && S.state === 'play' ? Math.abs(Math.sin(S.frame * 0.16)) * -2.5 : 0;
+  drawSprite(frame, A.koaiCustom, p.x, p.y + bounce, p.w, p.h);
   ctx.restore();
 
   // 파티클 (+10)
-  ctx.font = '9px NeoDunggeunmo, monospace';
+  ctx.font = '9px Galmuri11, NeoDunggeunmo, monospace';
   ctx.fillStyle = '#ff8f2b';
   S.particles.forEach((pt) => ctx.fillText(pt.text, Math.round(pt.x), Math.round(pt.y)));
 
   // HUD
   ctx.fillStyle = pal.hud;
-  ctx.font = '11px NeoDunggeunmo, monospace';
+  ctx.font = '11px Galmuri11, NeoDunggeunmo, monospace';
   ctx.textAlign = 'right';
   ctx.fillText(`SCORE ${String(score()).padStart(5, '0')}`, W - 8, 18);
   ctx.fillText(`LV ${S.level}`, W - 8, 32);
   ctx.textAlign = 'left';
   // HUD 아이콘: 심볼 18종이 천천히 돌아가며 표시
-  drawSprite(A.items[Math.floor(S.frame / 45) % A.items.length], A.itemsCustom, 8, 5, 15, 15);
+  drawSprite(A.items[Math.floor(S.frame / 60) % A.items.length], A.itemsCustom, 8, 5, 15, 15);
   ctx.fillText(`x ${S.bananas}`, 27, 18);
 
   // 레벨업 배너 (깜빡임)
   if (S.levelBannerT > 0 && Math.floor(S.frame / 5) % 2 === 0) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ff8f2b';
-    ctx.font = '20px NeoDunggeunmo, monospace';
+    ctx.font = '20px Galmuri11, NeoDunggeunmo, monospace';
     ctx.fillText(`LEVEL ${S.level}!`, W / 2, 88);
-    ctx.font = '10px NeoDunggeunmo, monospace';
+    ctx.font = '10px Galmuri11, NeoDunggeunmo, monospace';
     ctx.fillText('속도 UP!', W / 2, 104);
-    ctx.font = '11px NeoDunggeunmo, monospace';
+    ctx.font = '11px Galmuri11, NeoDunggeunmo, monospace';
     ctx.textAlign = 'left';
   }
 
   if (S.state === 'ready') {
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#29366f';
+    ctx.fillStyle = pal.hud;
     ctx.fillText('탭 또는 스페이스로 점프!', W / 2, 110);
   }
   ctx.restore();
@@ -464,7 +503,8 @@ function escapeHtml(s) {
 async function showOver() {
   S.state = 'over';
   const finalScore = score();
-  const { best } = await submitScore(S.nickname, finalScore, S.bananas);
+  const kinds = S.collected.filter((c) => c > 0).length;
+  const { best } = await submitScore(S.nickname, finalScore, S.bananas, kinds);
 
   renderCard($('cardCanvas'), {
     nickname: S.nickname,
@@ -472,7 +512,9 @@ async function showOver() {
     bananas: S.bananas,
     best,
     koaiSprite: A.koaiHappy,
-    bananaSprite: A.items[0],
+    symbols: A.items,
+    collected: S.collected,
+    emblem: A.emblem,
   });
   overScreen.classList.remove('hidden');
   fetchLeaderboard().then(showLeaderboard).catch(() => {});
@@ -516,6 +558,7 @@ $('muteBtn').addEventListener('click', () => {
 // ───────── 부팅 ─────────
 (async function boot() {
   A = await loadAssets();
+  try { await document.fonts.load('11px Galmuri11'); } catch (e) { /* 폰트 실패해도 진행 */ }
   // 시작화면 미리보기 스프라이트
   const pv = $('preview');
   pv.width = 128; pv.height = 128;

@@ -163,13 +163,14 @@ function tryImg(src) {
 export async function loadAssets() {
   // 컨소시엄 심볼 18종 — 먹는 아이템 (COSS_로고정리본_260605ver 기준)
   const symbolPaths = Array.from({ length: 18 }, (_, i) => `assets/symbols/sym${String(i + 1).padStart(2, '0')}.png`);
-  const [koaiImg, koaiImg2, koaiHitImg, koaiHappyImg, bananaImg, obstacleImg, ...symbolImgs] = await Promise.all([
+  const [koaiImg, koaiImg2, koaiHitImg, koaiHappyImg, bananaImg, obstacleImg, emblemImg, ...symbolImgs] = await Promise.all([
     tryImg('assets/koai.png'),
     tryImg('assets/koai2.png'), // 있으면 달리기 2번째 프레임으로 사용
     tryImg('assets/koai_hit.png'), // 충돌 시 표정
     tryImg('assets/koai_happy.png'), // 결과 카드 표정
     tryImg('assets/banana.png'),
     tryImg('assets/obstacle.png'),
+    tryImg('assets/bg/emblem.png'), // 키비주얼 방패 엠블럼 (결과 카드)
     ...symbolPaths.map(tryImg),
   ]);
   const symbols = symbolImgs.filter(Boolean);
@@ -191,5 +192,6 @@ export async function loadAssets() {
     rock: makeSprite(ROCK),
     drone: makeSprite(DRONE),
     cloud: makeSprite(CLOUD),
+    emblem: emblemImg, // 없으면 null — 카드에서 텍스트 타이틀로 대체
   };
 }
