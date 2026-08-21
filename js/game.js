@@ -1,7 +1,7 @@
 // game.js — 코아이 러너 메인 (게임 루프 + 화면 전환)
-import { loadAssets } from './assets.js?v=4';
-import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=4';
-import { renderCard, saveCard } from './result.js?v=4';
+import { loadAssets } from './assets.js?v=6';
+import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=6';
+import { renderCard, saveCard } from './result.js?v=6';
 
 // ───────── 내부 해상도 (픽셀아트 기준) ─────────
 const W = 400, H = 240;
@@ -59,7 +59,15 @@ const sfx = {
   jump: () => beep(500, 0.12, 'square', 350),
   eat: () => beep(1100, 0.08, 'square', 300, 0.06),
   die: () => beep(300, 0.4, 'sawtooth', -220, 0.1),
+  level: () => { beep(660, 0.1, 'square', 0, 0.08); setTimeout(() => beep(880, 0.18, 'square', 220, 0.08), 100); },
 };
+
+// 레벨별 배경 팔레트: 낮 → 노을 → 밤 (레벨 4부터 다시 낮)
+const PALETTES = [
+  { sky: '#a2dcff', hill: '#8fd47a', grass: '#5cab48', dirt: '#7a4a1e', dirtDark: '#5c3714', hud: '#10121f', night: false },
+  { sky: '#ffc98a', hill: '#d4a05a', grass: '#8fae4a', dirt: '#6e3f18', dirtDark: '#502d0e', hud: '#57280a', night: false },
+  { sky: '#232a4d', hill: '#3c5a44', grass: '#2e6b3a', dirt: '#3d2712', dirtDark: '#2a1a0a', hud: '#f4f4f4', night: true },
+];
 
 // ───────── 게임 상태 ─────────
 const S = {
@@ -78,6 +86,8 @@ const S = {
   frame: 0,
   dieTimer: 0,
   shake: 0,
+  level: 1,
+  levelBannerT: 0,
 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -97,6 +107,8 @@ function resetGame() {
   S.nextItem = 160;
   S.frame = 0;
   S.shake = 0;
+  S.level = 1;
+  S.levelBannerT = 0;
 }
 
 // ───────── 입력 ─────────
@@ -136,6 +148,13 @@ function spawnObstacle() {
   // 스폰 지점 근처에 심볼 아이템이 있으면 겹치지 않게 잠시 미룬다
   if (S.items.some((it) => it.x > W - 40 && it.x < W + 110)) {
     S.nextObstacle = 60;
+    return;
+  }
+  // 레벨 2부터 공중 장애물(드론) 등장 — 서 있으면 지나가지만, 점프 타이밍이 겹치면 위험
+  if (S.level >= 2 && Math.random() < 0.25) {
+    const baseY = GROUND_Y - rand(48, 66);
+    S.obstacles.push({ x: W + 20, y: baseY, baseY, w: 18, h: 12, spr: 'drone', fly: true, phase: Math.random() * 6.28 });
+    S.nextObstacle = rand(160, 300) + S.speed * 26;
     return;
   }
   const roll = Math.random();
@@ -187,9 +206,19 @@ function spawnItems() {
 function update(f) {
   S.frame++;
   if (S.state === 'play') {
-    S.speed = Math.min(6.5, S.speed + 0.00045 * f);
+    // 레벨이 오를수록 속도 상한도 올라간다
+    S.speed = Math.min(Math.min(8, 6 + S.level * 0.5), S.speed + 0.00045 * f);
     S.dist += S.speed * f;
+    // 1000점마다 레벨업: 배너 + 속도 점프
+    const lv = Math.floor(score() / 1000) + 1;
+    if (lv > S.level) {
+      S.level = lv;
+      S.levelBannerT = 110;
+      S.speed = Math.min(8, S.speed + 0.5);
+      sfx.level();
+    }
   }
+  if (S.levelBannerT > 0) S.levelBannerT -= f;
   const sp = S.speed * f;
 
   // 플레이어 물리
@@ -230,8 +259,11 @@ function update(f) {
   if (S.nextObstacle <= 0) spawnObstacle();
   if (S.nextItem <= 0) spawnItems();
 
-  // 이동
-  S.obstacles.forEach((o) => (o.x -= sp));
+  // 이동 (드론은 약간 더 빠르고 위아래로 흔들림)
+  S.obstacles.forEach((o) => {
+    o.x -= sp * (o.fly ? 1.15 : 1);
+    if (o.fly) o.y = o.baseY + Math.sin(S.frame * 0.08 + o.phase) * 4;
+  });
   S.items.forEach((it) => (it.x -= sp));
   S.obstacles = S.obstacles.filter((o) => o.x > -40);
   S.items = S.items.filter((it) => it.x > -30);
@@ -278,15 +310,27 @@ function draw() {
   ctx.save();
   ctx.translate(Math.round(sx), Math.round(sy));
 
+  const pal = PALETTES[(S.level - 1) % PALETTES.length];
+
   // 하늘
-  ctx.fillStyle = '#a2dcff';
+  ctx.fillStyle = pal.sky;
   ctx.fillRect(-8, -8, W + 16, H + 16);
+
+  // 밤에는 별
+  if (pal.night) {
+    ctx.fillStyle = '#e8e8d0';
+    for (let i = 0; i < 24; i++) {
+      let px = (i * 71 - Math.floor(S.dist * 0.04)) % (W + 20);
+      if (px < 0) px += W + 20;
+      ctx.fillRect(px, 8 + ((i * 37) % (GROUND_Y - 90)), 2, 2);
+    }
+  }
 
   // 구름
   S.clouds.forEach((c) => ctx.drawImage(A.cloud, Math.round(c.x), Math.round(c.y)));
 
   // 원경 언덕
-  ctx.fillStyle = '#8fd47a';
+  ctx.fillStyle = pal.hill;
   const hillShift = Math.floor((S.dist * 0.25) % 160);
   for (let i = -1; i < 4; i++) {
     const bx = i * 160 - hillShift;
@@ -298,11 +342,11 @@ function draw() {
   }
 
   // 지면
-  ctx.fillStyle = '#5cab48';
+  ctx.fillStyle = pal.grass;
   ctx.fillRect(-8, GROUND_Y, W + 16, 6);
-  ctx.fillStyle = '#7a4a1e';
+  ctx.fillStyle = pal.dirt;
   ctx.fillRect(-8, GROUND_Y + 6, W + 16, H - GROUND_Y);
-  ctx.fillStyle = '#5c3714';
+  ctx.fillStyle = pal.dirtDark;
   const gShift = Math.floor(S.dist % 24);
   for (let x = -gShift; x < W + 24; x += 24) {
     ctx.fillRect(x, GROUND_Y + 12, 10, 3);
@@ -317,7 +361,8 @@ function draw() {
 
   // 장애물
   S.obstacles.forEach((o) => {
-    drawSprite(o.spr === 'rock' ? A.rock : A.crate, o.spr === 'rock' ? false : A.crateCustom, Math.round(o.x), Math.round(o.y), o.w, o.h);
+    const spr = o.spr === 'rock' ? A.rock : o.spr === 'drone' ? A.drone : A.crate;
+    drawSprite(spr, o.spr === 'crate' ? A.crateCustom : false, Math.round(o.x), Math.round(o.y), o.w, o.h);
   });
 
   // 코아이
@@ -347,14 +392,27 @@ function draw() {
   S.particles.forEach((pt) => ctx.fillText(pt.text, Math.round(pt.x), Math.round(pt.y)));
 
   // HUD
-  ctx.fillStyle = '#10121f';
+  ctx.fillStyle = pal.hud;
   ctx.font = '11px NeoDunggeunmo, monospace';
   ctx.textAlign = 'right';
   ctx.fillText(`SCORE ${String(score()).padStart(5, '0')}`, W - 8, 18);
+  ctx.fillText(`LV ${S.level}`, W - 8, 32);
   ctx.textAlign = 'left';
-  // HUD 아이콘: 심볼 13종이 천천히 돌아가며 표시
+  // HUD 아이콘: 심볼 18종이 천천히 돌아가며 표시
   drawSprite(A.items[Math.floor(S.frame / 45) % A.items.length], A.itemsCustom, 8, 5, 15, 15);
   ctx.fillText(`x ${S.bananas}`, 27, 18);
+
+  // 레벨업 배너 (깜빡임)
+  if (S.levelBannerT > 0 && Math.floor(S.frame / 5) % 2 === 0) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff8f2b';
+    ctx.font = '20px NeoDunggeunmo, monospace';
+    ctx.fillText(`LEVEL ${S.level}!`, W / 2, 88);
+    ctx.font = '10px NeoDunggeunmo, monospace';
+    ctx.fillText('속도 UP!', W / 2, 104);
+    ctx.font = '11px NeoDunggeunmo, monospace';
+    ctx.textAlign = 'left';
+  }
 
   if (S.state === 'ready') {
     ctx.textAlign = 'center';

@@ -106,6 +106,21 @@ const ROCK = [
   'KKKKKKKKKKKKKKK.',
 ];
 
+// 드론 (공중 장애물, 레벨 2+) 16x11
+const DRONE = [
+  'KK....KK....KK..',
+  '.KKKKKKKKKKKK...',
+  '...K...K...K....',
+  '..KGGGGGGGGK....',
+  '.KGWWGGGGGGGK...',
+  '.KGWGGGGGGYGK...',
+  '.KGGGGGGGGYGK...',
+  '..KGGGGGGGGK....',
+  '...KKKKKKKK.....',
+  '....K.....K.....',
+  '...KK.....KK....',
+];
+
 // 구름 20x8
 const CLOUD = [
   '......WWWW..........',
@@ -146,8 +161,8 @@ function tryImg(src) {
 }
 
 export async function loadAssets() {
-  // 컨소시엄 심볼 13종 — 먹는 아이템
-  const symbolPaths = Array.from({ length: 13 }, (_, i) => `assets/symbols/sym${String(i + 1).padStart(2, '0')}.png`);
+  // 컨소시엄 심볼 18종 — 먹는 아이템 (COSS_로고정리본_260605ver 기준)
+  const symbolPaths = Array.from({ length: 18 }, (_, i) => `assets/symbols/sym${String(i + 1).padStart(2, '0')}.png`);
   const [koaiImg, koaiImg2, koaiHitImg, koaiHappyImg, bananaImg, obstacleImg, ...symbolImgs] = await Promise.all([
     tryImg('assets/koai.png'),
     tryImg('assets/koai2.png'), // 있으면 달리기 2번째 프레임으로 사용
@@ -174,6 +189,7 @@ export async function loadAssets() {
     crate: obstacleImg || makeSprite(CRATE),
     crateCustom: !!obstacleImg,
     rock: makeSprite(ROCK),
+    drone: makeSprite(DRONE),
     cloud: makeSprite(CLOUD),
   };
 }
