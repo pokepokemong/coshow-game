@@ -71,7 +71,7 @@ canvas#game {
 #startScreen {
   background:
     linear-gradient(rgba(16, 18, 31, 0.5), rgba(16, 18, 31, 0.72)),
-    url('../assets/bg/keyvisual.png') center / cover no-repeat,
+    url('../assets/bg/keyvisual_wide.png') center / cover no-repeat,
     #141a3a;
 }
 

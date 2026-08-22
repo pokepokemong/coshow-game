@@ -41,9 +41,23 @@ export function renderCard(canvas, { nickname, score, bananas, best, koaiSprite,
 
   // 상단: 키비주얼 방패 엠블럼 (없으면 텍스트 타이틀)
   if (emblem) {
-    const ew = 62;
+    const ew = 88;
     const eh = Math.round((ew * emblem.naturalHeight) / emblem.naturalWidth);
-    g.drawImage(emblem, (CW - ew) / 2, 8, ew, eh);
+    // 가장자리를 방사형으로 페이드시켜 카드 배경(남색)에 자연스럽게 녹인다
+    const off = document.createElement('canvas');
+    off.width = emblem.naturalWidth;
+    off.height = emblem.naturalHeight;
+    const og = off.getContext('2d');
+    og.drawImage(emblem, 0, 0);
+    og.globalCompositeOperation = 'destination-in';
+    const ecx = off.width / 2, ecy = off.height / 2;
+    const er = Math.max(ecx, ecy);
+    const grad = og.createRadialGradient(ecx, ecy, er * 0.6, ecx, ecy, er * 0.98);
+    grad.addColorStop(0, 'rgba(0,0,0,1)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    og.fillStyle = grad;
+    og.fillRect(0, 0, off.width, off.height);
+    g.drawImage(off, (CW - ew) / 2, 0, ew, eh);
   } else {
     g.textAlign = 'center';
     g.fillStyle = '#ffd23f';
