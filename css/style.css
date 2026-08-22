@@ -51,6 +51,22 @@ canvas#game {
   touch-action: none;
 }
 
+/* ---------- 모바일 세로 → 가로 회전 ---------- */
+body.rotated { overflow: hidden; }
+body.rotated #wrap {
+  position: fixed;
+  top: 0;
+  left: 100vw;
+  transform: rotate(90deg);
+  transform-origin: 0 0;
+  max-width: none;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+}
+body.rotated h1.title { font-size: 15px; margin: 2px 0 6px; }
+body.rotated footer { display: none; }
+
 /* ---------- 오버레이 공통 ---------- */
 .overlay {
   position: absolute;

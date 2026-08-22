@@ -25,7 +25,34 @@ function fitCanvas() {
   ctx.imageSmoothingEnabled = false;
 }
 fitCanvas();
-window.addEventListener('resize', fitCanvas);
+
+// 모바일 세로 화면이면 게임 전체를 90도 회전시켜 가로로 보여준다
+function updateOrientation() {
+  const portrait = window.innerHeight > window.innerWidth && window.innerWidth < 820;
+  document.body.classList.toggle('rotated', portrait);
+  const wrap = document.getElementById('wrap');
+  if (portrait) {
+    wrap.style.width = window.innerHeight + 'px';
+    wrap.style.height = window.innerWidth + 'px';
+  } else {
+    wrap.style.width = '';
+    wrap.style.height = '';
+  }
+  fittedKey = '';
+  fitCanvas();
+}
+updateOrientation();
+window.addEventListener('resize', updateOrientation);
+
+// 안드로이드 크롬: 게임 시작 시 전체화면 + 가로 방향 잠금 시도 (실패하면 CSS 회전으로 대체)
+async function tryLandscapeLock() {
+  try {
+    if (window.innerHeight > window.innerWidth && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+    }
+  } catch (e) { /* 미지원 브라우저는 CSS 회전 사용 */ }
+}
 
 // 벡터풍 커스텀 이미지는 스무딩을 켜고, 코드로 그린 픽셀 스프라이트는 끈 채로 그린다
 function drawSprite(img, smooth, x, y, w, h) {
@@ -537,6 +564,7 @@ $('startBtn').addEventListener('click', async () => {
   }
   S.nickname = nick;
   $('startBtn').disabled = true;
+  tryLandscapeLock(); // 모바일: 가로 화면 전환 시도
   registerUser(nick).finally(() => {
     $('startBtn').disabled = false;
     startGame();
