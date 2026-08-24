@@ -4,103 +4,243 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CO-SHOW 관리자 대시보드</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="assets/koai.png">
+  <link rel="stylesheet" href="css/style.css?v=9">
+  <style>
+    body.admin { padding: 16px 12px 40px; }
+    .admin #wrap { max-width: 1060px; }
+    .dash-head {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 6px;
+    }
+    .dash-head h1 { font-size: 18px; color: #ffd23f; text-shadow: 2px 2px 0 #29366f; }
+    .head-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .mode-badge {
+      font-size: 12px; padding: 5px 10px; border: 2px solid;
+      letter-spacing: 1px;
+    }
+    .mode-badge.live { color: #73eff7; border-color: #73eff7; }
+    .mode-badge.demo { color: #ffd23f; border-color: #ffd23f; }
+    .stamp { font-size: 11px; color: #566c86; }
+
+    .banner {
+      background: #29366f; border: 2px solid #ffd23f; padding: 10px 14px;
+      font-size: 12.5px; line-height: 1.8; margin: 10px 0 4px; color: #f4f4f4;
+    }
+    .banner b { color: #ffd23f; }
+
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px; margin: 14px 0;
+    }
+    .kpi-card {
+      background: #232a4d; border: 2px solid #41a6f6; box-shadow: 3px 3px 0 #10121f;
+      padding: 12px 10px; text-align: center;
+    }
+    .kpi-card .label { font-size: 11px; color: #94b0c2; margin-bottom: 6px; letter-spacing: 1px; }
+    .kpi-card .value { font-size: 24px; color: #ffd23f; font-variant-numeric: tabular-nums; }
+    .kpi-card .value small { font-size: 12px; color: #94b0c2; }
+
+    .panel {
+      background: #1f2440; border: 2px solid #29366f; box-shadow: 3px 3px 0 #10121f;
+      padding: 14px; margin-top: 14px;
+    }
+    .panel h2 { font-size: 14px; color: #73eff7; margin-bottom: 10px; letter-spacing: 1px; }
+    canvas#hourChart { width: 100%; height: 150px; display: block; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+    @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+    .table-wrap { overflow: auto; max-height: 420px; }
+    table.pixel-table { width: 100%; border-collapse: collapse; font-size: 12.5px; background: #1a1f38; }
+    .pixel-table th, .pixel-table td { border: 1px solid #29366f; padding: 5px 9px; text-align: center; white-space: nowrap; }
+    .pixel-table th { background: #232a4d; color: #73eff7; position: sticky; top: 0; }
+    .pixel-table td.num { font-variant-numeric: tabular-nums; }
+    .rank-1 { color: #ffd23f; }
+    .rank-2 { color: #d7e3ef; }
+    .rank-3 { color: #e8a06a; }
+  </style>
 </head>
 <body class="admin">
   <div id="wrap">
-    <h1 class="title">CO-SHOW 관리자 대시보드</h1>
-    <div id="content">
-      <p class="hint" style="text-align:center">불러오는 중...</p>
-    </div>
+    <div id="content"><p class="hint" style="text-align:center; margin-top:40px">불러오는 중...</p></div>
   </div>
 
   <script type="module">
-    import { firebaseConfig, ADMIN_KEY, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js';
+    import { ADMIN_KEY, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js?v=10';
 
     const content = document.getElementById('content');
+    let demoCache = null;
 
     function fmtTime(ts) {
-      if (!ts || !ts.toDate) return '-';
-      const d = ts.toDate();
+      const d = ts && ts.toDate ? ts.toDate() : ts instanceof Date ? ts : null;
+      if (!d) return '-';
       return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
-    function esc(s) {
-      return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // ───── 데모 데이터 (Firebase 미연동 시 대시보드 시연용) ─────
+    function makeDemoData() {
+      if (demoCache) return demoCache;
+      const first = ['씩씩한', '날쌘', '반짝', '슈퍼', '꼬마', '점프', '네온', '픽셀', '용감한', '초코', '번개', '바람'];
+      const second = ['코아이', '러너', '드론', '별', '로봇', '치타', '햄스터', '펭귄', '호랑이', '토끼'];
+      const rnd = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
+      const users = [];
+      const scores = [];
+      const now = new Date();
+      for (let i = 0; i < 52; i++) {
+        const nickname = first[rnd(0, first.length - 1)] + second[rnd(0, second.length - 1)] + rnd(1, 99);
+        const playCount = rnd(1, 7);
+        let best = 0;
+        let last = null;
+        for (let p = 0; p < playCount; p++) {
+          const daysAgo = Math.random() < 0.6 ? 0 : rnd(1, 2);
+          const d = new Date(now);
+          d.setDate(d.getDate() - daysAgo);
+          // 행사 시간대(10~17시)에 몰리게
+          d.setHours(rnd(9, 18), rnd(0, 59), rnd(0, 59), 0);
+          if (d > now) d.setTime(now.getTime() - rnd(1, 120) * 60000);
+          const score = Math.max(40, Math.round(Math.abs(1100 * (Math.random() + Math.random() - 1)) + rnd(50, 400)));
+          const bananas = Math.round(score / rnd(28, 45));
+          scores.push({ uid: 'demo' + i, nickname, score, bananas, kinds: Math.min(18, rnd(1, Math.max(2, Math.min(18, bananas)))), createdAt: d });
+          best = Math.max(best, score);
+          if (!last || d > last) last = d;
+        }
+        users.push({ id: 'demo' + i, nickname, playCount, bestScore: best, lastVisitAt: last });
+      }
+      scores.sort((a, b) => b.createdAt - a.createdAt);
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      demoCache = { users, scores, totalPlays: scores.length, todayScores: scores.filter((s) => s.createdAt >= start) };
+      return demoCache;
+    }
+
+    // ───── 시간대별 플레이 차트 ─────
+    function drawHourChart(canvas, todayScores) {
+      const hours = new Array(24).fill(0);
+      todayScores.forEach((s) => {
+        const d = s.createdAt && s.createdAt.toDate ? s.createdAt.toDate() : s.createdAt;
+        if (d instanceof Date) hours[d.getHours()]++;
+      });
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const cw = canvas.clientWidth || 600;
+      canvas.width = cw * dpr; canvas.height = 150 * dpr;
+      const g = canvas.getContext('2d');
+      g.scale(dpr, dpr);
+      const max = Math.max(1, ...hours);
+      const pad = 4, baseY = 128, chartH = 110;
+      const bw = (cw - pad * 2) / 24;
+      g.font = '9px Galmuri11, monospace';
+      g.textAlign = 'center';
+      for (let h = 0; h < 24; h++) {
+        const x = pad + h * bw;
+        const bh = Math.round((hours[h] / max) * chartH);
+        g.fillStyle = hours[h] ? '#57e6ff' : '#29366f';
+        g.fillRect(x + 2, baseY - Math.max(bh, 2), bw - 4, Math.max(bh, 2));
+        if (hours[h]) {
+          g.fillStyle = '#f4f4f4';
+          g.fillText(String(hours[h]), x + bw / 2, baseY - bh - 4);
+        }
+        if (h % 3 === 0) {
+          g.fillStyle = '#566c86';
+          g.fillText(h + '시', x + bw / 2, 144);
+        }
+      }
     }
 
     async function render() {
-      const key = new URLSearchParams(location.search).get('key');
-      if (key !== ADMIN_KEY) {
+      const params = new URLSearchParams(location.search);
+      if (params.get('key') !== ADMIN_KEY) {
         content.innerHTML = '<div class="notice">접근 키가 필요합니다.<br>admin.html?key=관리자키 형식으로 접속하세요.</div>';
         return;
       }
-      if (!isConfigured()) {
-        content.innerHTML = '<div class="notice">Firebase가 아직 설정되지 않았습니다.<br>js/firebase.js 상단의 firebaseConfig에 프로젝트 키를 입력하세요.<br>(절차는 README.md 참고)</div>';
-        return;
-      }
-      const ok = await initFirebase();
-      if (!ok) {
-        content.innerHTML = '<div class="notice">Firebase 연결에 실패했습니다. 콘솔 로그를 확인하세요.</div>';
-        return;
-      }
-      const data = await fetchAdminData();
-      const { users, scores, totalPlays, todayScores } = data;
 
+      let data = null;
+      let live = false;
+      if (isConfigured()) {
+        try {
+          if (await initFirebase()) { data = await fetchAdminData(); live = !!data; }
+        } catch (e) { console.warn(e); }
+      }
+      if (!data) data = makeDemoData();
+
+      const { users, scores, totalPlays, todayScores } = data;
       const todayUids = new Set(todayScores.map((s) => s.uid));
-      const bestScore = users.reduce((m, u) => Math.max(m, u.bestScore || 0), 0);
+      const allScores = scores.map((s) => s.score);
+      const bestScore = allScores.length ? Math.max(...allScores) : 0;
+      const avgScore = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
 
       const userRows = users
         .slice()
         .sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0))
+        .slice(0, 100)
         .map((u, i) => `<tr>
-          <td>${i + 1}</td>
+          <td class="num ${i < 3 ? 'rank-' + (i + 1) : ''}">${i + 1}</td>
           <td>${esc(u.nickname)}</td>
-          <td>${u.playCount || 0}</td>
-          <td>${u.bestScore || 0}</td>
+          <td class="num">${u.playCount || 0}</td>
+          <td class="num">${u.bestScore || 0}</td>
           <td>${fmtTime(u.lastVisitAt)}</td>
         </tr>`).join('');
 
-      const scoreRows = scores.slice(0, 100).map((s) => `<tr>
+      const scoreRows = scores.slice(0, 80).map((s) => `<tr>
         <td>${fmtTime(s.createdAt)}</td>
         <td>${esc(s.nickname)}</td>
-        <td>${s.score}</td>
-        <td>${s.bananas ?? '-'}</td>
+        <td class="num">${s.score}</td>
+        <td class="num">${s.bananas ?? '-'}</td>
+        <td class="num">${s.kinds ?? '-'}</td>
       </tr>`).join('');
 
       content.innerHTML = `
+        <div class="dash-head">
+          <h1>CO-SHOW 관리자 대시보드</h1>
+          <div class="head-right">
+            <span class="mode-badge ${live ? 'live' : 'demo'}">${live ? '● 실시간 데이터' : '데모 데이터'}</span>
+            <button id="refreshBtn" class="pixel-btn small alt">🔄 새로고침</button>
+          </div>
+        </div>
+        <div class="stamp">마지막 갱신 ${new Date().toLocaleTimeString('ko-KR')} · 1분마다 자동 갱신</div>
+        ${live ? '' : `<div class="banner"><b>지금은 데모 데이터입니다.</b> Firebase 프로젝트 키를 js/firebase.js에 입력하면
+          이 화면 그대로 실제 이용자 수·스코어가 실시간 집계됩니다. (절차: README.md)</div>`}
+
         <div class="kpi-grid">
-          <div class="kpi-card"><div class="label">총 이용자 수</div><div class="value">${users.length}</div></div>
-          <div class="kpi-card"><div class="label">총 플레이 수</div><div class="value">${totalPlays}</div></div>
-          <div class="kpi-card"><div class="label">오늘 이용자</div><div class="value">${todayUids.size}</div></div>
-          <div class="kpi-card"><div class="label">오늘 플레이</div><div class="value">${todayScores.length}</div></div>
+          <div class="kpi-card"><div class="label">총 이용자</div><div class="value">${users.length}<small>명</small></div></div>
+          <div class="kpi-card"><div class="label">총 플레이</div><div class="value">${totalPlays}<small>회</small></div></div>
+          <div class="kpi-card"><div class="label">오늘 이용자</div><div class="value">${todayUids.size}<small>명</small></div></div>
+          <div class="kpi-card"><div class="label">오늘 플레이</div><div class="value">${todayScores.length}<small>회</small></div></div>
           <div class="kpi-card"><div class="label">최고 점수</div><div class="value">${bestScore}</div></div>
-        </div>
-        <div style="text-align:center"><button id="refreshBtn" class="pixel-btn small alt">🔄 새로고침</button>
-          <span class="hint" id="lastUpdate"></span></div>
-
-        <h2 class="section-title">사용자별 기록</h2>
-        <div class="table-wrap">
-          <table class="pixel-table">
-            <thead><tr><th>#</th><th>닉네임</th><th>플레이</th><th>최고점수</th><th>최근 접속</th></tr></thead>
-            <tbody>${userRows || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody>
-          </table>
+          <div class="kpi-card"><div class="label">평균 점수</div><div class="value">${avgScore}</div></div>
         </div>
 
-        <h2 class="section-title">최근 플레이 로그 (최신 100건)</h2>
-        <div class="table-wrap">
-          <table class="pixel-table">
-            <thead><tr><th>시각</th><th>닉네임</th><th>점수</th><th>심볼</th></tr></thead>
-            <tbody>${scoreRows || '<tr><td colspan="4">기록 없음</td></tr>'}</tbody>
-          </table>
+        <div class="panel">
+          <h2>오늘 시간대별 플레이</h2>
+          <canvas id="hourChart"></canvas>
+        </div>
+
+        <div class="two-col">
+          <div class="panel">
+            <h2>사용자 랭킹 (최고점 기준)</h2>
+            <div class="table-wrap">
+              <table class="pixel-table">
+                <thead><tr><th>#</th><th>닉네임</th><th>플레이</th><th>최고점</th><th>최근 접속</th></tr></thead>
+                <tbody>${userRows || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>최근 플레이 로그</h2>
+            <div class="table-wrap">
+              <table class="pixel-table">
+                <thead><tr><th>시각</th><th>닉네임</th><th>점수</th><th>심볼</th><th>종류</th></tr></thead>
+                <tbody>${scoreRows || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody>
+              </table>
+            </div>
+          </div>
         </div>`;
 
-      document.getElementById('lastUpdate').textContent =
-        ` 업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
-      document.getElementById('refreshBtn').addEventListener('click', render);
+      drawHourChart(document.getElementById('hourChart'), todayScores);
+      document.getElementById('refreshBtn').addEventListener('click', () => { demoCache = null; render(); });
     }
 
     render();
-    setInterval(render, 60000); // 1분마다 자동 갱신
+    setInterval(render, 60000);
   </script>
 </body>
 </html>
