@@ -1,7 +1,7 @@
 // game.js — 코아이 러너 메인 (게임 루프 + 화면 전환)
-import { loadAssets } from './assets.js?v=13';
-import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=13';
-import { renderCard, saveCard } from './result.js?v=13';
+import { loadAssets } from './assets.js?v=14';
+import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=14';
+import { renderCard, saveCard } from './result.js?v=14';
 
 // ───────── 내부 해상도 (픽셀아트 기준) ─────────
 const W = 400, H = 240;

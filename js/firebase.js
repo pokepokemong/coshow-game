@@ -39,6 +39,16 @@ export async function initFirebase() {
     const authMod = await import(`${CDN}/firebase-auth.js`);
     fs = await import(`${CDN}/firebase-firestore.js`);
     const app = appMod.initializeApp(firebaseConfig);
+    // App Check: "등록된 우리 사이트에서 온 요청"임을 증명하는 입장권 (reCAPTCHA v3, 사이트 키는 공개용)
+    if (location.hostname.endsWith('github.io')) {
+      try {
+        const ac = await import(`${CDN}/firebase-app-check.js`);
+        ac.initializeAppCheck(app, {
+          provider: new ac.ReCaptchaV3Provider('6Lc4TJgtAAAAALbgMpdZXQ4FGUXcmL11YIoWZ0WH'),
+          isTokenAutoRefreshEnabled: true,
+        });
+      } catch (e) { console.warn('[firebase] App Check 초기화 실패:', e); }
+    }
     const cred = await authMod.signInAnonymously(authMod.getAuth(app));
     uid = cred.user.uid;
     db = fs.getFirestore(app);
