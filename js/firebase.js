@@ -40,7 +40,7 @@ export async function initFirebase() {
     fs = await import(`${CDN}/firebase-firestore.js`);
     const app = appMod.initializeApp(firebaseConfig);
     // App Check: "등록된 우리 사이트에서 온 요청"임을 증명하는 입장권 (reCAPTCHA v3, 사이트 키는 공개용)
-    if (location.hostname.endsWith('github.io')) {
+    if (location.hostname.endsWith('github.io') || location.hostname.endsWith('web.app')) {
       try {
         const ac = await import(`${CDN}/firebase-app-check.js`);
         ac.initializeAppCheck(app, {

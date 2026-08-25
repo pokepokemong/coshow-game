@@ -1,5 +1,20 @@
 {
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "hosting": {
+    "site": "coshow-game",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "**/.*",
+      "**/node_modules/**",
+      "admin-key.txt",
+      "원본에셋/**",
+      "*.log",
+      "*.jpeg",
+      "README.md"
+    ]
   }
 }
