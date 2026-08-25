@@ -8,12 +8,12 @@
 // 키가 비어 있으면 자동으로 오프라인 모드(localStorage)로 동작한다.
 // ─────────────────────────────────────────────────────────────
 export const firebaseConfig = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: 'AIzaSyDpT26lkqe6CxHMG3CZi_MT5Mbrwe5BZaA',
+  authDomain: 'coshow-game-2026.firebaseapp.com',
+  projectId: 'coshow-game-2026',
+  storageBucket: 'coshow-game-2026.firebasestorage.app',
+  messagingSenderId: '724126755197',
+  appId: '1:724126755197:web:7fc2af7c384e00b2f60414',
 };
 
 // admin.html?key=XXX 접근용 키 (행사용 간단 검증)

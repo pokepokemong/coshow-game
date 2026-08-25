@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 사용자 문서: 본인(익명 uid)만 쓰기, 리더보드용 공개 읽기
+    match /users/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    // 점수 로그: 본인 명의 생성만, 수정·삭제 불가
+    match /scores/{doc} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score < 100000;
+      allow update, delete: if false;
+    }
+    // 경품 응모 연락처(향후): 웹에서는 아무도 읽을 수 없음 — 콘솔에서만 열람
+    match /contacts/{uid} {
+      allow read: if false;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+    }
+  }
+}
