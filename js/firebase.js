@@ -16,8 +16,8 @@ export const firebaseConfig = {
   appId: '1:724126755197:web:7fc2af7c384e00b2f60414',
 };
 
-// admin.html 접근 키의 SHA-256 지문 — 키 원문은 코드에 없음 (관리자키.txt 참고, 저장소 미포함)
-export const ADMIN_KEY_HASH = '99a3b7665b1a35f6a4f73de324324f49321eedb8d3e5583d73fff822931e64bb';
+// admin.html 접근 키의 SHA-256 지문 — 키 원문은 코드에 없음 (로컬 admin-key.txt 참고, 저장소 미포함)
+export const ADMIN_KEY_HASH = '83170ab775dfbb81fec6ec90d71a5a2145127a758172f23392c96dc2900e1595';
 
 const FB_VER = '10.12.2';
 const CDN = `https://www.gstatic.com/firebasejs/${FB_VER}`;
