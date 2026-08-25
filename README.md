@@ -63,7 +63,9 @@ service cloud.firestore {
 
 ### 관리자 키 변경
 
-`js/firebase.js`의 `ADMIN_KEY` 값을 원하는 문자열로 바꾸세요. 접속은 `admin.html?key=그값`.
+키 원문은 코드에 없고 SHA-256 지문(`js/firebase.js`의 `ADMIN_KEY_HASH`)만 저장됩니다.
+키를 바꾸려면 새 키의 SHA-256 해시를 구해 `ADMIN_KEY_HASH` 값을 교체하세요. 접속은 `admin.html?key=새키`.
+현재 키는 로컬의 `관리자키.txt`(저장소 미포함)에 있습니다.
 
 ## 배포 (GitHub Pages)
 

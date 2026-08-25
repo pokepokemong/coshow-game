@@ -66,7 +66,13 @@
   </div>
 
   <script type="module">
-    import { ADMIN_KEY, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js?v=10';
+    import { ADMIN_KEY_HASH, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js?v=11';
+
+    // 입력된 키의 SHA-256 지문을 저장된 지문과 대조 (키 원문은 코드에 없음)
+    async function sha256Hex(s) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+      return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
 
     const content = document.getElementById('content');
     let demoCache = null;
@@ -148,7 +154,7 @@
 
     async function render() {
       const params = new URLSearchParams(location.search);
-      if (params.get('key') !== ADMIN_KEY) {
+      if ((await sha256Hex(params.get('key') || '')) !== ADMIN_KEY_HASH) {
         content.innerHTML = '<div class="notice">접근 키가 필요합니다.<br>admin.html?key=관리자키 형식으로 접속하세요.</div>';
         return;
       }
