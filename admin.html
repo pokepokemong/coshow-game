@@ -58,6 +58,7 @@
     .rank-1 { color: #ffd23f; }
     .rank-2 { color: #d7e3ef; }
     .rank-3 { color: #e8a06a; }
+    tr.sus td { background: #3d1f26; color: #ff9a9a; }
   </style>
 </head>
 <body class="admin">
@@ -66,7 +67,7 @@
   </div>
 
   <script type="module">
-    import { ADMIN_KEY_HASH, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js?v=12';
+    import { ADMIN_KEY_HASH, initFirebase, fetchAdminData, isConfigured } from './js/firebase.js?v=13';
 
     // 입력된 키의 SHA-256 지문을 저장된 지문과 대조 (키 원문은 코드에 없음)
     async function sha256Hex(s) {
@@ -107,7 +108,7 @@
           if (d > now) d.setTime(now.getTime() - rnd(1, 120) * 60000);
           const score = Math.max(40, Math.round(Math.abs(1100 * (Math.random() + Math.random() - 1)) + rnd(50, 400)));
           const bananas = Math.round(score / rnd(28, 45));
-          scores.push({ uid: 'demo' + i, nickname, score, bananas, kinds: Math.min(18, rnd(1, Math.max(2, Math.min(18, bananas)))), createdAt: d });
+          scores.push({ uid: 'demo' + i, nickname, score, bananas, kinds: Math.min(18, rnd(1, Math.max(2, Math.min(18, bananas)))), playTime: Math.max(10, Math.round(score / 15) + rnd(0, 20)), createdAt: d });
           best = Math.max(best, score);
           if (!last || d > last) last = d;
         }
@@ -186,13 +187,26 @@
           <td>${fmtTime(u.lastVisitAt)}</td>
         </tr>`).join('');
 
-      const scoreRows = scores.slice(0, 80).map((s) => `<tr>
+      // 의심 기록 판정: 시간 대비 불가능한 점수 / 게임 구조상 불가능한 조합
+      function suspicion(s) {
+        const reasons = [];
+        if (s.playTime && s.score / s.playTime > 60) reasons.push('시간 대비 점수 과다');
+        if ((s.bananas ?? 0) * 10 > s.score) reasons.push('심볼·점수 불일치');
+        if ((s.kinds ?? 0) > (s.bananas ?? 0)) reasons.push('종류>개수');
+        return reasons;
+      }
+      const scoreRows = scores.slice(0, 80).map((s) => {
+        const warns = suspicion(s);
+        return `<tr${warns.length ? ' class="sus"' : ''}>
         <td>${fmtTime(s.createdAt)}</td>
         <td>${esc(s.nickname)}</td>
         <td class="num">${s.score}</td>
         <td class="num">${s.bananas ?? '-'}</td>
         <td class="num">${s.kinds ?? '-'}</td>
-      </tr>`).join('');
+        <td class="num">${s.playTime ? s.playTime + '초' : '-'}</td>
+        <td title="${esc(warns.join(', '))}">${warns.length ? '⚠️' : ''}</td>
+      </tr>`;
+      }).join('');
 
       content.innerHTML = `
         <div class="dash-head">
@@ -234,8 +248,8 @@
             <h2>최근 플레이 로그</h2>
             <div class="table-wrap">
               <table class="pixel-table">
-                <thead><tr><th>시각</th><th>닉네임</th><th>점수</th><th>심볼</th><th>종류</th></tr></thead>
-                <tbody>${scoreRows || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody>
+                <thead><tr><th>시각</th><th>닉네임</th><th>점수</th><th>심볼</th><th>종류</th><th>시간</th><th></th></tr></thead>
+                <tbody>${scoreRows || '<tr><td colspan="7">기록 없음</td></tr>'}</tbody>
               </table>
             </div>
           </div>

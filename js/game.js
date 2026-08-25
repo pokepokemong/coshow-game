@@ -1,7 +1,7 @@
 // game.js — 코아이 러너 메인 (게임 루프 + 화면 전환)
-import { loadAssets } from './assets.js?v=12';
-import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=12';
-import { renderCard, saveCard } from './result.js?v=12';
+import { loadAssets } from './assets.js?v=13';
+import { initFirebase, registerUser, submitScore, fetchLeaderboard, isOnline, getUid } from './firebase.js?v=13';
+import { renderCard, saveCard } from './result.js?v=13';
 
 // ───────── 내부 해상도 (픽셀아트 기준) ─────────
 const W = 400, H = 240;
@@ -163,6 +163,7 @@ function resetGame() {
   S.level = 1;
   S.levelBannerT = 0;
   S.collected = new Array(A ? A.items.length : 18).fill(0);
+  S.playStart = Date.now(); // 물리 검증용 플레이 시작 시각
 }
 
 // ───────── 입력 ─────────
@@ -183,10 +184,12 @@ function releaseJump() {
   if (S.state === 'play' && p.vy < -2.5) p.vy = -2.5; // 짧게 누르면 낮게 점프
 }
 
-canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); pressJump(); });
+// e.isTrusted: 사람의 실제 입력에만 브라우저가 찍어주는 도장 — 스크립트가 만든 가짜 입력(매크로) 차단
+canvas.addEventListener('pointerdown', (e) => { if (!e.isTrusted) return; e.preventDefault(); pressJump(); });
 canvas.addEventListener('pointerup', releaseJump);
 canvas.addEventListener('pointercancel', releaseJump);
 window.addEventListener('keydown', (e) => {
+  if (!e.isTrusted) return;
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     if (e.repeat) return;
     e.preventDefault();
@@ -531,7 +534,8 @@ async function showOver() {
   S.state = 'over';
   const finalScore = score();
   const kinds = S.collected.filter((c) => c > 0).length;
-  const { best } = await submitScore(S.nickname, finalScore, S.bananas, kinds);
+  const playTime = Math.max(1, Math.round((Date.now() - (S.playStart || Date.now())) / 1000));
+  const { best } = await submitScore(S.nickname, finalScore, S.bananas, kinds, playTime);
 
   renderCard($('cardCanvas'), {
     nickname: S.nickname,

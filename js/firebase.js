@@ -69,7 +69,7 @@ export async function registerUser(nickname) {
 }
 
 // 게임 종료 시 점수 저장 (scores 로그 + users 집계)
-export async function submitScore(nickname, score, bananas, kinds = 0) {
+export async function submitScore(nickname, score, bananas, kinds = 0, playTime = 1) {
   // 로컬 기록은 항상 유지 (오프라인 리더보드 겸 개인 최고점)
   const best = Math.max(score, Number(localStorage.getItem('coshow_best') || 0));
   localStorage.setItem('coshow_best', String(best));
@@ -80,7 +80,7 @@ export async function submitScore(nickname, score, bananas, kinds = 0) {
   if (!db) return { online: false, best };
   try {
     await fs.addDoc(fs.collection(db, 'scores'), {
-      uid, nickname, score, bananas, kinds, createdAt: fs.serverTimestamp(),
+      uid, nickname, score, bananas, kinds, playTime, createdAt: fs.serverTimestamp(),
     });
     const ref = fs.doc(db, 'users', uid);
     const snap = await fs.getDoc(ref);
@@ -90,6 +90,7 @@ export async function submitScore(nickname, score, bananas, kinds = 0) {
       playCount: fs.increment(1),
       bestScore: Math.max(prevBest, score),
       lastVisitAt: fs.serverTimestamp(),
+      lastSubmitAt: fs.serverTimestamp(), // 제출 간격 검증용 (서버 시계)
     }, { merge: true });
     return { online: true, best };
   } catch (e) {

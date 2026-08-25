@@ -8,14 +8,31 @@ service cloud.firestore {
         && data.nickname.size() <= 8;
     }
 
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+    function hasLastSubmit() {
+      return exists(userPath()) && 'lastSubmitAt' in get(userPath()).data;
+    }
+    function msSinceLastSubmit() {
+      return request.time.toMillis() - get(userPath()).data.lastSubmitAt.toMillis();
+    }
+
     // 사용자 문서: 본인(익명 uid)만 쓰기, 리더보드용 공개 읽기
+    // lastSubmitAt은 서버 시각으로만 기록 가능 (과거로 조작 불가)
     match /users/{uid} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid
-        && validNickname(request.resource.data);
+        && validNickname(request.resource.data)
+        && (
+          !('lastSubmitAt' in request.resource.data)
+          || request.resource.data.lastSubmitAt == request.time
+          || (resource != null && 'lastSubmitAt' in resource.data
+              && request.resource.data.lastSubmitAt == resource.data.lastSubmitAt)
+        );
     }
 
-    // 점수 로그: 본인 명의 생성만, 수정·삭제 불가, 값 범위 검증
+    // 점수 로그: 본인 명의 생성만, 수정·삭제 불가, 값 범위 + 물리 검증
     match /scores/{doc} {
       allow read: if true;
       allow create: if request.auth != null
@@ -27,10 +44,25 @@ service cloud.firestore {
         && request.resource.data.bananas is int
         && request.resource.data.bananas >= 0
         && request.resource.data.bananas <= 2000
+        // 점수는 심볼 점수(개당 10점)보다 작을 수 없음 (게임 구조상 불가능한 조합 차단)
+        && request.resource.data.score >= request.resource.data.bananas * 10
         && (!('kinds' in request.resource.data)
           || (request.resource.data.kinds is int
             && request.resource.data.kinds >= 0
-            && request.resource.data.kinds <= 18));
+            && request.resource.data.kinds <= 18))
+        // 물리 검증: 플레이 시간(초) 필수, 시간당 낼 수 있는 최대 점수 상한
+        && request.resource.data.playTime is int
+        && request.resource.data.playTime >= 1
+        && request.resource.data.playTime <= 7200
+        && request.resource.data.score <= request.resource.data.playTime * 80 + 200
+        // 제출 간격 제한(8초) + 신고한 플레이 시간이 실제 경과(서버 시계)보다 클 수 없음
+        && (
+          !hasLastSubmit()
+          || (
+            msSinceLastSubmit() >= 8000
+            && msSinceLastSubmit() >= request.resource.data.playTime * 1000
+          )
+        );
       allow update, delete: if false;
     }
 
